@@ -83,3 +83,7 @@ def log_exit(visitor_id: int, db: Session = Depends(get_db)):
     visitor.exit_time = datetime.utcnow()
     db.commit()
     return {"status": "success"}
+@app.get("/visitor-history")
+def get_visitor_history(db: Session = Depends(get_db)):
+    visitors = db.query(Visitor).filter(Visitor.status == "Exited").all()
+    return visitors

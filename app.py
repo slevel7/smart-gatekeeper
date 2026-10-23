@@ -37,8 +37,8 @@ with tab1:
 with tab2:
     st.subheader("Currently on Campus")
     
-    # Auto-fetch data without needing a refresh button every time
     try:
+        # 1. Fetch and show Active Visitors
         res = requests.get(f"{API_URL}/active-visitors")
         if res.status_code == 200:
             visitors = res.json()
@@ -48,19 +48,37 @@ with tab2:
                 st.dataframe(df, use_container_width=True)
                 
                 st.markdown("### Log Exit")
-                col1, col2 = st.columns([1, 3])
+                col1, col2 = st.columns([2, 2])
                 with col1:
-                    exit_id = st.number_input("Enter Visitor ID to log exit", min_value=1, step=1)
+                    # Use a Dropdown menu instead of manual number typing!
+                    options = {v["id"]: f"ID {v['id']} - {v['visitor_name']} ({v['vehicle_number']})" for v in visitors}
+                    exit_id = st.selectbox("Select Visitor to Exit", options=list(options.keys()), format_func=lambda x: options[x])
+                
                 with col2:
                     st.write("") # spacing
                     st.write("")
                     if st.button("Confirm Exit"):
                         exit_res = requests.post(f"{API_URL}/log-exit/{exit_id}")
                         if exit_res.status_code == 200:
-                            st.success("Exit logged successfully! Rerun or refresh the page to update the table.")
+                            st.success("Exit logged successfully!")
+                            st.rerun() # Instantly refresh the page to update the tables
                         else:
                             st.error("Could not log exit.")
             else:
-                st.write("No active visitors on campus.")
-    except:
-        st.error("Could not load dashboard. Make sure the FastAPI backend is running.")
+                st.info("No active visitors currently on campus.")
+
+        # 2. Fetch and show Exit History (Previous Records)
+        st.markdown("---")
+        st.subheader("Exit History (Previous Records)")
+        hist_res = requests.get(f"{API_URL}/visitor-history")
+        if hist_res.status_code == 200:
+            history = hist_res.json()
+            if history:
+                hist_df = pd.DataFrame(history)
+                hist_df = hist_df[["id", "visitor_name", "visiting_student", "vehicle_number", "entry_time", "exit_time"]]
+                st.dataframe(hist_df, use_container_width=True)
+            else:
+                st.write("No previous records yet.")
+
+    except Exception as e:
+        st.error(f"Could not load dashboard. Make sure the FastAPI backend is running. Error: {e}")
